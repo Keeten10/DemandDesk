@@ -1,0 +1,915 @@
+{% extends "base.html" %}
+
+{% block title %}需求详情 - {{ requirement.code }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 左侧主要内容 -->
+        <div class="col-md-8">
+            <!-- 需求标题和基本信息 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4>
+                            <span class="badge bg-{{ requirement.get_priority_bg_class() }}">
+                                {% if requirement.priority == '关键' %}关键
+                                {% elif requirement.priority == '高' %}高
+                                {% elif requirement.priority == '中' %}中
+                                {% elif requirement.priority == '低' %}低
+                                {% else %}未设置{% endif %}
+                            </span>
+                            {{ requirement.title }}
+                        </h4>
+                        <div class="btn-group">
+                            {% if current_user.role != 'viewer' %}
+                            <a href="{{ url_for('requirement.edit', id=requirement.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i> 编辑
+                            </a>
+                            <button class="btn btn-sm btn-outline-secondary" 
+                                    onclick="showStatusChangeModal()">
+                                <i class="fas fa-exchange-alt"></i> 更改状态
+                            </button>
+                            {% else %}
+                            <span class="btn btn-sm btn-outline-muted disabled">
+                                <i class="fas fa-eye"></i> 仅查看模式
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 需求编号和版本 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <strong>需求编号:</strong> {{ requirement.code }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>版本:</strong> {{ requirement.version or '-' }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>类型:</strong> 
+                            <span class="badge bg-info">{{ requirement.type }}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>状态:</strong> 
+                            <span class="badge bg-{{ requirement.get_status_bg_class() }}">
+                                {{ requirement.status }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- 需求描述 -->
+                    <div class="mb-3">
+                        <h6>需求描述</h6>
+                        <div class="border rounded p-3 bg-light">
+                            {{ requirement.description | safe }}
+                        </div>
+                    </div>
+                    
+                    <!-- 详细信息标签页 -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#details">详细信息</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#acceptance">验收标准</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#testcases">测试用例</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#dependencies">依赖关系</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#history">变更历史</a>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3">
+                        <!-- 详细信息 -->
+                        <div id="details" class="tab-pane fade show active">
+                            {% if requirement.background %}
+                            <div class="mb-3">
+                                <h6>背景说明</h6>
+                                <p>{{ requirement.background }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if requirement.objective %}
+                            <div class="mb-3">
+                                <h6>目标</h6>
+                                <p>{{ requirement.objective }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if requirement.scope %}
+                            <div class="mb-3">
+                                <h6>范围</h6>
+                                <p>{{ requirement.scope }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if requirement.assumptions %}
+                            <div class="mb-3">
+                                <h6>假设条件</h6>
+                                <p>{{ requirement.assumptions }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if requirement.constraints %}
+                            <div class="mb-3">
+                                <h6>约束条件</h6>
+                                <p>{{ requirement.constraints }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if requirement.risks %}
+                            <div class="mb-3">
+                                <h6>风险说明</h6>
+                                <p>{{ requirement.risks }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 验收标准 -->
+                        <div id="acceptance" class="tab-pane fade">
+                            {% if requirement.acceptance_criteria %}
+                                {{ requirement.acceptance_criteria | safe }}
+                            {% else %}
+                                <p class="text-muted">暂无验收标准</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 测试用例 -->
+                        <div id="testcases" class="tab-pane fade">
+                            {% if current_user.role != 'viewer' %}
+                            <button class="btn btn-sm btn-success mb-3" onclick="showAddTestCaseModal()">
+                                <i class="fas fa-plus"></i> 添加测试用例
+                            </button>
+                            {% endif %}
+                            
+                            {% if requirement.test_cases %}
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>用例标题</th>
+                                        <th>优先级</th>
+                                        <th>状态</th>
+                                        <th>测试人</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for test_case in requirement.test_cases %}
+                                    <tr>
+                                        <td>{{ test_case.title }}</td>
+                                        <td>{{ test_case.priority }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if test_case.status == 'passed' else 'danger' if test_case.status == 'failed' else 'secondary' }}">
+                                                {{ test_case.status }}
+                                            </span>
+                                        </td>
+                                        <td>{{ test_case.tester.full_name if test_case.tester else '-' }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary">查看</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p class="text-muted">暂无测试用例</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 依赖关系 -->
+                        <div id="dependencies" class="tab-pane fade">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>依赖的需求</h6>
+                                    {% if requirement.dependencies.count() > 0 %}
+                                    <ul>
+                                        {% for dep in requirement.dependencies %}
+                                        <li>
+                                            <a href="{{ url_for('requirement.view', id=dep.id) }}">
+                                                {{ dep.code }} - {{ dep.title }}
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <p class="text-muted">No dependencies</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6>被依赖的需求</h6>
+                                    {% if requirement.dependents.count() > 0 %}
+                                    <ul>
+                                        {% for dep in requirement.dependents %}
+                                        <li>
+                                            <a href="{{ url_for('requirement.view', id=dep.id) }}">
+                                                {{ dep.code }} - {{ dep.title }}
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <p class="text-muted">无被依赖项</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 变更历史 -->
+                        <div id="history" class="tab-pane fade">
+                            {% if history %}
+                            <div class="timeline">
+                                {% for h in history %}
+                                <div class="timeline-item">
+                                    <div class="timeline-badge">
+                                        <i class="fas fa-{{ 'plus' if h.action == 'create' else 'edit' if h.action == 'update' else 'exchange-alt' }}"></i>
+                                    </div>
+                                    <div class="timeline-panel">
+                                        <div class="timeline-heading">
+                                            <h6 class="timeline-title">
+                                                {{ h.user.full_name }} 
+                                                {% if h.action == 'create' %}创建了需求
+                                                {% elif h.action == 'update' %}更新了 {{ h.field_name }}
+                                                {% elif h.action == 'status_change' %}更改了状态
+                                                {% endif %}
+                                            </h6>
+                                            <p class="text-muted">
+                                                <small>
+                                                    <i class="fas fa-clock"></i> 
+                                                    {{ h.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                                </small>
+                                            </p>
+                                        </div>
+                                        {% if h.old_value and h.new_value %}
+                                        <div class="timeline-body">
+                                            <p>
+                                                <del class="text-danger">{{ h.old_value }}</del> → 
+                                                <ins class="text-success">{{ h.new_value }}</ins>
+                                            </p>
+                                        </div>
+                                        {% endif %}
+                                        {% if h.comment %}
+                                        <div class="timeline-body">
+                                            <p>{{ h.comment }}</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="text-muted">暂无变更历史</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 评论区 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>评论讨论</h5>
+                </div>
+                <div class="card-body">
+                    {% if current_user.role != 'viewer' %}
+                    <form method="POST" action="{{ url_for('requirement.add_comment', id=requirement.id) }}">
+                        {{ comment_form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ comment_form.content(class="form-control", rows="3", placeholder="添加评论...") }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">发表评论</button>
+                    </form>
+                    {% else %}
+                    <p class="text-muted">查看者模式，无法添加评论</p>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    {% if requirement.comments %}
+                    <div class="comments-list">
+                        {% for comment in requirement.comments %}
+                        <div class="comment-item mb-3">
+                            <div class="d-flex">
+                                <img src="{{ comment.user.avatar or '/static/default-avatar.png' }}" 
+                                     class="rounded-circle me-3" width="40" height="40">
+                                <div class="flex-grow-1">
+                                    <h6>{{ comment.user.full_name }}</h6>
+                                    <p>{{ comment.content }}</p>
+                                    <small class="text-muted">
+                                        {{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">暂无评论</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧信息栏 -->
+        <div class="col-md-4">
+            <!-- 基本信息卡片 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6>基本信息</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">项目:</dt>
+                        <dd class="col-sm-7">{{ requirement.project.name if requirement.project else '-' }}</dd>
+                        
+                        <dt class="col-sm-5">模块:</dt>
+                        <dd class="col-sm-7">{{ requirement.module.name if requirement.module else '-' }}</dd>
+                        
+                        <dt class="col-sm-5">分类:</dt>
+                        <dd class="col-sm-7">{{ requirement.category.name if requirement.category else '-' }}</dd>
+                        
+                        <dt class="col-sm-5">来源:</dt>
+                        <dd class="col-sm-7">{{ requirement.source or '-' }}</dd>
+                    </dl>
+                </div>
+            </div>
+            
+            <!-- 人员信息 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6>人员信息</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">创建人:</dt>
+                        <dd class="col-sm-7">{{ requirement.creator.full_name if requirement.creator else '-' }}</dd>
+                        
+                        <dt class="col-sm-5">负责人:</dt>
+                        <dd class="col-sm-7">{{ requirement.assignee.full_name if requirement.assignee else '未分配' }}</dd>
+                        
+                        <dt class="col-sm-5">评审人:</dt>
+                        <dd class="col-sm-7">{{ requirement.reviewer.full_name if requirement.reviewer else '未分配' }}</dd>
+                    </dl>
+                </div>
+            </div>
+            
+            <!-- 时间和估算 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6>时间和估算</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">创建时间:</dt>
+                        <dd class="col-sm-7">{{ requirement.created_at.strftime('%Y-%m-%d') }}</dd>
+                        
+                        <dt class="col-sm-5">开始日期:</dt>
+                        <dd class="col-sm-7">{{ requirement.start_date.strftime('%Y-%m-%d') if requirement.start_date else '-' }}</dd>
+                        
+                        <dt class="col-sm-5">截止日期:</dt>
+                        <dd class="col-sm-7">
+                            {{ requirement.due_date.strftime('%Y-%m-%d') if requirement.due_date else '-' }}
+                            {% if requirement.due_date and requirement.due_date < now().date() and requirement.status != 'completed' %}
+                            <span class="badge bg-danger">Overdue</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-5">预估工时:</dt>
+                        <dd class="col-sm-7">{{ requirement.estimated_hours or '-' }} 小时</dd>
+                        
+                        <dt class="col-sm-5">故事点:</dt>
+                        <dd class="col-sm-7">{{ requirement.story_points or '-' }}</dd>
+                        
+                        <dt class="col-sm-5">业务价值:</dt>
+                        <dd class="col-sm-7">
+                            {% if requirement.business_value %}
+                            <div class="progress">
+                                <div class="progress-bar" style="width: {{ requirement.business_value }}%">
+                                    {{ requirement.business_value }}
+                                </div>
+                            </div>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+            
+            <!-- 标签 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6>标签</h6>
+                </div>
+                <div class="card-body">
+                    {% if requirement.tags %}
+                        {% for tag in requirement.tags %}
+                        <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">无标签</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 附件 -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">附件 
+                        {% if requirement.attachments %}
+                        <span class="badge bg-info">{{ requirement.attachments|length }}</span>
+                        {% endif %}
+                    </h6>
+                    {% if current_user.role != 'viewer' %}
+                    <button class="btn btn-sm btn-outline-primary" onclick="showUploadModal()">
+                        <i class="fas fa-upload"></i> 上传
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if requirement.attachments %}
+                    <div class="attachment-list">
+                        {% for attachment in requirement.attachments %}
+                        <div class="attachment-item border rounded p-3 mb-2" data-attachment-id="{{ attachment.id }}">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-{{ 'file-pdf' if attachment.filename.lower().endswith('.pdf') 
+                                                         else 'file-word' if attachment.filename.lower().endswith(('.doc', '.docx'))
+                                                         else 'file-excel' if attachment.filename.lower().endswith(('.xls', '.xlsx'))
+                                                         else 'file-image' if attachment.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))
+                                                         else 'file' }} text-primary me-3" style="font-size: 1.5em;"></i>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">
+                                                <a href="{{ url_for('requirement.download_attachment', id=attachment.id) }}" 
+                                                   class="text-decoration-none text-dark fw-bold">
+                                                    {{ attachment.filename }}
+                                                </a>
+                                            </h6>
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-weight-hanging me-1"></i>{{ (attachment.file_size / 1024)|round(1) }}KB • 
+                                                <i class="fas fa-clock me-1"></i>{{ attachment.uploaded_at.strftime('%Y-%m-%d %H:%M') }} • 
+                                                <i class="fas fa-user me-1"></i>{{ attachment.uploader.full_name if attachment.uploader else '未知' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('requirement.download_attachment', id=attachment.id) }}" 
+                                           class="btn btn-outline-primary" title="下载">
+                                            <i class="fas fa-download"></i> 下载
+                                        </a>
+                                        {% if attachment.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
+                                        <button class="btn btn-outline-info" 
+                                                onclick="previewImage('{{ url_for('requirement.download_attachment', id=attachment.id) }}', '{{ attachment.filename }}')" 
+                                                title="预览">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% endif %}
+                                        {% if current_user.role in ['admin', 'manager'] or attachment.uploaded_by == current_user.id %}
+                                        <button class="btn btn-outline-danger" 
+                                                onclick="deleteAttachmentInView({{ attachment.id }})" title="删除">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- 附件统计信息 -->
+                    <div class="mt-3 p-2 bg-light rounded">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            共 {{ requirement.attachments|length }} 个附件，
+                            总大小：{{ (requirement.attachments|sum(attribute='file_size') / 1024)|round(1) }}KB
+                        </small>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-folder-open text-muted" style="font-size: 3em;"></i>
+                        <p class="text-muted mt-2 mb-3">暂无附件</p>
+                        {% if current_user.role != 'viewer' %}
+                        <button class="btn btn-outline-primary btn-sm" onclick="showUploadModal()">
+                            <i class="fas fa-upload"></i> 上传第一个附件
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 完整度 -->
+            <div class="card">
+                <div class="card-header">
+                    <h6>需求完整度</h6>
+                </div>
+                <div class="card-body">
+                    {% set completeness = requirement.calculate_completeness() %}
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-{{ 'success' if completeness >= 80 else 'warning' if completeness >= 50 else 'danger' }}" 
+                             style="width: {{ completeness }}%">
+                            {{ completeness|round|int }}%
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        完整度基于必填字段和关键信息的填写情况计算
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 状态变更模态框 -->
+<div class="modal fade" id="statusChangeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('requirement.change_status', id=requirement.id) }}">
+                {{ status_form.hidden_tag() }}
+                <div class="modal-header">
+                    <h5 class="modal-title">更改需求状态</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {{ status_form.status.label(class="form-label") }}
+                        {{ status_form.status(class="form-select", **{"data-current": requirement.status}) }}
+                    </div>
+                    <div class="mb-3">
+                        {{ status_form.comment.label(class="form-label") }}
+                        {{ status_form.comment(class="form-control", rows="3") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认更改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 文件上传模态框 -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">上传附件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="fileInput" class="form-label">选择文件</label>
+                        <input type="file" class="form-control" id="fileInput" name="file" 
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.txt">
+                        <div class="form-text">
+                            支持的格式：PDF, Word, Excel, 图片, 文本文件，最大 16MB
+                        </div>
+                    </div>
+                    
+                    <!-- 文件预览信息 -->
+                    <div id="filePreview" class="mb-3" style="display: none;">
+                        <div class="alert alert-info">
+                            <h6>文件信息：</h6>
+                            <div id="fileInfo"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 上传进度 -->
+                    <div id="uploadProgress" class="mb-3" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted">正在上传...</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="uploadBtn" onclick="uploadFile()">上传</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图片预览模态框 -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imagePreviewTitle">图片预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="previewImage" src="" alt="" class="img-fluid" style="max-height: 70vh;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <a id="downloadImageBtn" href="" class="btn btn-primary" download>
+                    <i class="fas fa-download"></i> 下载
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showStatusChangeModal() {
+    new bootstrap.Modal(document.getElementById('statusChangeModal')).show();
+}
+
+function showAddTestCaseModal() {
+    // 实现添加测试用例的模态框
+}
+
+function showUploadModal() {
+    const modal = new bootstrap.Modal(document.getElementById('uploadModal'));
+    modal.show();
+    
+    // 重置表单
+    document.getElementById('uploadForm').reset();
+    document.getElementById('filePreview').style.display = 'none';
+    document.getElementById('uploadProgress').style.display = 'none';
+}
+
+// 文件选择变化事件
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                showFilePreview(file);
+            } else {
+                hideFilePreview();
+            }
+        });
+    }
+});
+
+function showFilePreview(file) {
+    const filePreview = document.getElementById('filePreview');
+    const fileInfo = document.getElementById('fileInfo');
+    
+    const fileSize = (file.size / 1024).toFixed(1);
+    const fileType = file.type || '未知';
+    const lastModified = new Date(file.lastModified).toLocaleString();
+    
+    fileInfo.innerHTML = `
+        <strong>文件名：</strong> ${file.name}<br>
+        <strong>文件大小：</strong> ${fileSize} KB<br>
+        <strong>文件类型：</strong> ${fileType}<br>
+        <strong>最后修改：</strong> ${lastModified}
+    `;
+    
+    filePreview.style.display = 'block';
+}
+
+function hideFilePreview() {
+    document.getElementById('filePreview').style.display = 'none';
+}
+
+function uploadFile() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('请先选择要上传的文件');
+        return;
+    }
+    
+    // 检查文件大小
+    const maxSize = 16 * 1024 * 1024; // 16MB
+    if (file.size > maxSize) {
+        alert('文件大小超过限制（16MB）');
+        return;
+    }
+    
+    // 检查文件类型
+    const allowedTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'gif', 'txt'];
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(fileExtension)) {
+        alert('不支持的文件类型');
+        return;
+    }
+    
+    // 显示进度条
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = uploadProgress.querySelector('.progress-bar');
+    uploadProgress.style.display = 'block';
+    progressBar.style.width = '0%';
+    
+    // 禁用上传按钮
+    const uploadBtn = document.getElementById('uploadBtn');
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+    
+    // 创建 FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    
+    // 发送上传请求
+    const xhr = new XMLHttpRequest();
+    
+    // 上传进度
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+        }
+    });
+    
+    xhr.onload = function() {
+        uploadProgress.style.display = 'none';
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> 上传';
+        
+        if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            if (response.success) {
+                alert('文件上传成功！');
+                // 关闭模态框并刷新页面
+                bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            } else {
+                alert('上传失败：' + response.message);
+            }
+        } else {
+            alert('上传失败：服务器错误');
+        }
+    };
+    
+    xhr.onerror = function() {
+        uploadProgress.style.display = 'none';
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> 上传';
+        alert('上传失败：网络错误');
+    };
+    
+    const requirementId = {{ requirement.id }};
+    xhr.open('POST', `/requirements/${requirementId}/upload_attachment`);
+    xhr.send(formData);
+}
+
+// 预览图片
+function previewImage(imageUrl, filename) {
+    const modal = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
+    document.getElementById('imagePreviewTitle').textContent = filename;
+    document.getElementById('previewImage').src = imageUrl;
+    document.getElementById('downloadImageBtn').href = imageUrl;
+    modal.show();
+}
+
+// 在查看页面中删除附件
+function deleteAttachmentInView(attachmentId) {
+    if (confirm('确定要删除这个附件吗？删除后无法恢复。')) {
+        const attachmentItem = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
+        if (attachmentItem) {
+            attachmentItem.style.opacity = '0.5';
+        }
+        
+        fetch(`/requirements/attachments/${attachmentId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 从界面中移除附件项
+                if (attachmentItem) {
+                    attachmentItem.style.transition = 'all 0.3s ease';
+                    attachmentItem.style.opacity = '0';
+                    attachmentItem.style.transform = 'translateX(-100%)';
+                    setTimeout(() => {
+                        attachmentItem.remove();
+                        location.reload(); // 刷新以更新附件计数
+                    }, 300);
+                }
+            } else {
+                if (attachmentItem) {
+                    attachmentItem.style.opacity = '1';
+                }
+                alert('删除失败：' + (data.message || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (attachmentItem) {
+                attachmentItem.style.opacity = '1';
+            }
+            alert('删除失败：网络错误');
+        });
+    }
+}
+</script>
+
+<style>
+/* 时间线样式 */
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 20px;
+}
+
+.timeline-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: white;
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-panel {
+    background: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+.timeline-title {
+    margin: 0 0 5px 0;
+    font-size: 14px;
+}
+
+.comment-item {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 15px;
+}
+
+/* 附件样式 */
+.attachment-item {
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.attachment-item:hover {
+    background-color: #e9ecef;
+    border-color: #dee2e6 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.attachment-list .attachment-item:last-child {
+    margin-bottom: 0;
+}
+
+#uploadProgress .progress {
+    height: 8px;
+}
+
+#filePreview {
+    border-left: 4px solid #17a2b8;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* 图片预览样式 */
+#previewImage {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 模态框动画 */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: scale(0.8);
+}
+
+.modal.show .modal-dialog {
+    transform: scale(1);
+}
+</style>
+{% endblock %}

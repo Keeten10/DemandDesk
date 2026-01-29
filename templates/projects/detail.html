@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - 项目详情 - 需求管理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- 项目标题和操作 -->
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="{{ url_for('project.index') }}">项目管理</a>
+                        </li>
+                        <li class="breadcrumb-item active">{{ project.name }}</li>
+                    </ol>
+                </nav>
+                <h2 class="mb-2">
+                    <i class="fas fa-project-diagram"></i> {{ project.name }}
+                    {% set status_colors = {
+                        'active': 'success',
+                        'planning': 'info',
+                        'completed': 'primary',
+                        'on_hold': 'warning',
+                        'cancelled': 'danger'
+                    } %}
+                    {% set status_names = {
+                        'active': 'In Progress',
+                        'planning': 'In planning',
+                        'completed': 'Completed',
+                        'on_hold': 'On Hold',
+                        'cancelled': 'Cancelled'
+                    } %}
+                    <span class="badge bg-{{ status_colors.get(project.status, 'secondary') }} ms-2">
+                        {{ status_names.get(project.status, project.status) }}
+                    </span>
+                </h2>
+                <p class="text-muted mb-0">
+                    <i class="fas fa-code"></i> {{ project.code }}
+                </p>
+            </div>
+            
+            <div class="btn-group" role="group">
+                {% if current_user.role == 'admin' or project.manager_id == current_user.id %}
+                <a href="{{ url_for('project.edit', id=project.id) }}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> 编辑项目
+                </a>
+                {% endif %}
+                <a href="{{ url_for('project.statistics', id=project.id) }}" class="btn btn-outline-info">
+                    <i class="fas fa-chart-bar"></i> 统计报告
+                </a>
+                {% if current_user.role == 'admin' %}
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="fas fa-trash"></i> 删除项目
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 项目基本信息 -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> 项目信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-4">项目名称:</dt>
+                                    <dd class="col-sm-8">{{ project.name }}</dd>
+                                    
+                                    <dt class="col-sm-4">项目编码:</dt>
+                                    <dd class="col-sm-8">{{ project.code }}</dd>
+                                    
+                                    <dt class="col-sm-4">项目状态:</dt>
+                                    <dd class="col-sm-8">
+                                        <span class="badge bg-{{ status_colors.get(project.status, 'secondary') }}">
+                                            {{ status_names.get(project.status, project.status) }}
+                                        </span>
+                                    </dd>
+                                    
+                                    <dt class="col-sm-4">项目经理:</dt>
+                                    <dd class="col-sm-8">
+                                        {% if project.manager %}
+                                        <i class="fas fa-user"></i> {{ project.manager.full_name or project.manager.username }}
+                                        {% else %}
+                                        <span class="text-muted">未指定</span>
+                                        {% endif %}
+                                    </dd>
+                                </dl>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-4">Start Date:</dt>
+                                    <dd class="col-sm-8">
+                                        {% if project.start_date %}
+                                        {{ project.start_date.strftime('%Y年%m月%d日') }}
+                                        {% else %}
+                                        <span class="text-muted">未设定</span>
+                                        {% endif %}
+                                    </dd>
+                                    
+                                    <dt class="col-sm-4">End Date:</dt>
+                                    <dd class="col-sm-8">
+                                        {% if project.end_date %}
+                                        {{ project.end_date.strftime('%Y年%m月%d日') }}
+                                        {% else %}
+                                        <span class="text-muted">未设定</span>
+                                        {% endif %}
+                                    </dd>
+                                    
+                                    <dt class="col-sm-4">项目周期:</dt>
+                                    <dd class="col-sm-8">
+                                        {% if project.start_date and project.end_date %}
+                                        {{ (project.end_date - project.start_date).days }} 天
+                                        {% else %}
+                                        <span class="text-muted">未计算</span>
+                                        {% endif %}
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                        
+                        {% if project.description %}
+                        <hr>
+                        <h6><i class="fas fa-file-alt"></i> 项目描述</h6>
+                        <p class="mb-0">{{ project.description }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 最近需求活动 -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-clock"></i> 最近需求活动</h5>
+                        <a href="{{ url_for('index', project_id=project.id) }}" class="btn btn-sm btn-outline-primary">
+                            查看全部需求
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_requirements %}
+                        <div class="list-group list-group-flush">
+                            {% for req in recent_requirements %}
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            <a href="{{ url_for('requirement.view', id=req.id) }}" class="text-decoration-none">
+                                                {{ req.title }}
+                                            </a>
+                                        </h6>
+                                        <p class="mb-1 text-muted small">{{ req.code }}</p>
+                                        <small class="text-muted">
+                                            更新时间: {{ req.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                                            {% if req.assignee %}
+                                            | 负责人: {{ req.assignee.full_name or req.assignee.username }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% set req_status_colors = {
+                                            '草稿': 'secondary',
+                                            '已提交': 'info',
+                                            '评审中': 'warning',
+                                            '已批准': 'success',
+                                            'In progress': 'primary',
+                                            '测试中': 'info',
+                                            'Completed': 'success',
+                                            '已拒绝': 'danger',
+                                            'Cancelled': 'danger',
+                                            'On Hold': 'secondary'
+                                        } %}
+                                        <span class="badge bg-{{ req_status_colors.get(req.status, 'secondary') }}">
+                                            {{ req.status }}
+                                        </span>
+                                        {% if current_user.role != 'viewer' %}
+                                        <a href="{{ url_for('requirement.edit', id=req.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="编辑需求">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>该项目还没有需求</p>
+                            <a href="{{ url_for('requirement.create', project_id=project.id) }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> 创建需求
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 项目团队 -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-users"></i> 项目团队</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if team_members %}
+                        <div class="row">
+                            {% for member in team_members %}
+                            <div class="col-sm-6 col-md-4 col-lg-3 mb-3">
+                                <div class="text-center">
+                                    <div class="avatar-circle mb-2">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <h6 class="mb-1">{{ member.full_name or member.username }}</h6>
+                                    <small class="text-muted">{{ member.role }}</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-user-friends fa-2x mb-2"></i>
+                            <p>项目团队信息将在有需求参与者后显示</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧统计信息 -->
+            <div class="col-lg-4">
+                <!-- 需求统计概览 -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 需求统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-3">
+                            <div class="col-6">
+                                <div class="border-end">
+                                    <h3 class="text-primary">{{ requirements_stats.total }}</h3>
+                                    <small class="text-muted">Total demand</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <h3 class="text-success">{{ requirements_stats.completed }}</h3>
+                                <small class="text-muted">Completed</small>
+                            </div>
+                        </div>
+                        
+                        <div class="progress mb-3" style="height: 10px;">
+                            <div class="progress-bar bg-success" 
+                                 style="width: {{ requirements_stats.completion_rate }}%"
+                                 title="完成率">
+                            </div>
+                        </div>
+                        <p class="text-center mb-0">
+                            <strong>{{ requirements_stats.completion_rate }}%</strong> 完成率
+                        </p>
+                        
+                        <hr>
+                        
+                        <div class="row small">
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>草稿:</span>
+                                    <strong>{{ requirements_stats.draft }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>已提交:</span>
+                                    <strong>{{ requirements_stats.submitted }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>评审中:</span>
+                                    <strong>{{ requirements_stats.reviewing }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>已批准:</span>
+                                    <strong>{{ requirements_stats.approved }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>In progress:</span>
+                                    <strong>{{ requirements_stats.in_development }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between">
+                                    <span>测试中:</span>
+                                    <strong>{{ requirements_stats.testing }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Completed:</span>
+                                    <strong class="text-success">{{ requirements_stats.completed }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>已拒绝:</span>
+                                    <strong class="text-danger">{{ requirements_stats.rejected }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Cancelled:</span>
+                                    <strong class="text-muted">{{ requirements_stats.cancelled }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>On Hold:</span>
+                                    <strong class="text-warning">{{ requirements_stats.on_hold }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 快速操作 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-bolt"></i> 快速操作</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('requirement.create', project_id=project.id) }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> 新建需求
+                            </a>
+                            <a href="{{ url_for('index', project_id=project.id) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-list"></i> 查看Requirements List
+                            </a>
+                            <a href="{{ url_for('project.statistics', id=project.id) }}" class="btn btn-outline-info">
+                                <i class="fas fa-chart-bar"></i> 详细统计
+                            </a>
+                            {% if current_user.role in ['admin', 'manager'] %}
+                            <a href="{{ url_for('project.edit', id=project.id) }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-edit"></i> 编辑项目
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+{% if current_user.role == 'admin' %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除项目</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除项目 <strong>{{ project.name }}</strong> 吗？</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>注意：</strong>此操作不可撤销。删除项目前请确保已处理好项目中的所有需求。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form method="POST" action="{{ url_for('project.delete', id=project.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.avatar-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #007bff, #6610f2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    margin: 0 auto;
+}
+</style>
+{% endblock %}

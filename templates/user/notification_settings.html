@@ -1,0 +1,68 @@
+<!-- templates/notification_settings.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">通知设置</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                <h5 class="mb-3">应用内通知</h5>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="task_assigned" name="task_assigned" 
+                           {% if settings.task_assigned %}checked{% endif %}>
+                    <label class="form-check-label" for="task_assigned">
+                        当任务分配给我时通知我
+                    </label>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="task_updated" name="task_updated"
+                           {% if settings.task_updated %}checked{% endif %}>
+                    <label class="form-check-label" for="task_updated">
+                        当我负责的任务被更新时通知我
+                    </label>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="task_commented" name="task_commented"
+                           {% if settings.task_commented %}checked{% endif %}>
+                    <label class="form-check-label" for="task_commented">
+                        当我负责的任务收到评论时通知我
+                    </label>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="project_member_added" name="project_member_added"
+                           {% if settings.project_member_added %}checked{% endif %}>
+                    <label class="form-check-label" for="project_member_added">
+                        当我被添加到项目时通知我
+                    </label>
+                </div>
+                
+                <hr class="my-4">
+                
+                <h5 class="mb-3">电子邮件通知</h5>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="email_notifications" name="email_notifications"
+                           {% if settings.email_notifications %}checked{% endif %}>
+                    <label class="form-check-label" for="email_notifications">
+                        同时发送电子邮件通知
+                    </label>
+                    <div class="form-text text-muted">
+                        启用此选项后，您将同时收到电子邮件通知。
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('notifications.notifications') }}" class="btn btn-outline-secondary me-md-2">返回</a>
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

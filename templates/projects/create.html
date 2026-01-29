@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}创建项目 - 需求管理系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('project.index') }}">Project Management</a>
+                </li>
+                <li class="breadcrumb-item active">Create Project</li>
+            </ol>
+        </nav>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-plus"></i> Create New Project</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <!-- 项目名称 -->
+                        <div class="col-md-12 mb-3">
+                            {{ form.name.label(class="form-label required") }}
+                            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">项目的显示名称，应该简洁明了</div>
+                        </div>
+
+                        <!-- 项目编码 -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.code.label(class="form-label required") }}
+                            {{ form.code(class="form-control" + (" is-invalid" if form.code.errors else "")) }}
+                            {% if form.code.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.code.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">项目唯一标识，只能包含字母、数字、下划线和短横线</div>
+                        </div>
+
+                        <!-- 项目状态 -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.status.label(class="form-label") }}
+                            {{ form.status(class="form-select" + (" is-invalid" if form.status.errors else "")) }}
+                            {% if form.status.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.status.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 项目经理 -->
+                        <div class="col-md-12 mb-3">
+                            {{ form.manager_id.label(class="form-label") }}
+                            {{ form.manager_id(class="form-select" + (" is-invalid" if form.manager_id.errors else "")) }}
+                            {% if form.manager_id.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.manager_id.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">选择负责管理该项目的经理</div>
+                        </div>
+
+                        <!-- 开始日期和结束日期 -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.start_date.label(class="form-label") }}
+                            {{ form.start_date(class="form-control" + (" is-invalid" if form.start_date.errors else "")) }}
+                            {% if form.start_date.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.start_date.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            {{ form.end_date.label(class="form-label") }}
+                            {{ form.end_date(class="form-control" + (" is-invalid" if form.end_date.errors else "")) }}
+                            {% if form.end_date.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.end_date.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 项目描述 -->
+                        <div class="col-md-12 mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows="4") }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.description.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">项目的详细描述，包括目标、范围等信息</div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('project.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回
+                        </a>
+                        <div>
+                            <button type="reset" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-undo"></i> 重置
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 创建项目
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 创建提示卡片 -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6><i class="fas fa-lightbulb"></i> 创建提示</h6>
+                <ul class="mb-0 small text-muted">
+                    <li>项目名称应该简洁明了，便于团队成员理解</li>
+                    <li>项目编码建议使用有意义的缩写，如：WEB-SHOP、MOBILE-APP等</li>
+                    <li>选择合适的项目经理，确保项目有专人负责</li>
+                    <li>设定合理的时间计划，有助于项目进度管理</li>
+                    <li>详细的项目描述有助于团队成员了解项目背景和目标</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 项目编码自动生成建议
+    const nameField = document.querySelector('input[name="name"]');
+    const codeField = document.querySelector('input[name="code"]');
+    
+    nameField.addEventListener('input', function() {
+        if (!codeField.value) {
+            // 简单的自动生成逻辑
+            let suggestedCode = this.value
+                .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '') // 移除特殊字符
+                .substring(0, 20) // 限制长度
+                .toUpperCase();
+            
+            // 如果是中文，转换为拼音首字母（简化版本）
+            if (/[\u4e00-\u9fa5]/.test(suggestedCode)) {
+                suggestedCode = 'PROJECT_' + Date.now().toString().substring(-4);
+            }
+            
+            codeField.value = suggestedCode;
+        }
+    });
+    
+    // 日期验证
+    const startDateField = document.querySelector('input[name="start_date"]');
+    const endDateField = document.querySelector('input[name="end_date"]');
+    
+    function validateDates() {
+        if (startDateField.value && endDateField.value) {
+            const startDate = new Date(startDateField.value);
+            const endDate = new Date(endDateField.value);
+            
+            if (endDate <= startDate) {
+                endDateField.setCustomValidity('结束日期必须大于开始日期');
+            } else {
+                endDateField.setCustomValidity('');
+            }
+        }
+    }
+    
+    startDateField.addEventListener('change', validateDates);
+    endDateField.addEventListener('change', validateDates);
+});
+</script>
+
+<style>
+.required:after {
+    content: ' *';
+    color: #dc3545;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}

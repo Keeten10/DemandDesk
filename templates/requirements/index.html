@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}Requirements List{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题和操作按钮 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-list-alt"></i> Demand Management</h2>
+        <div class="btn-group">
+            {% if current_user.role != 'viewer' %}
+            <a href="{{ url_for('requirement.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Demand
+            </a>
+            <a href="{{ url_for('requirement.bulk_import') }}" class="btn btn-success">
+                <i class="fas fa-file-import"></i> Import
+            </a>
+            {% endif %}
+            <a href="{{ url_for('requirement.export', **request.args) }}" class="btn btn-info">
+                <i class="fas fa-file-export"></i> Export Excel
+            </a>
+            <a href="{{ url_for('requirement.statistics') }}" class="btn btn-warning">
+                <i class="fas fa-chart-bar"></i> Statistical Analysis
+            </a>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Total demand</h6>
+                            <h3>{{ stats.total }}</h3>
+                        </div>
+                        <i class="fas fa-tasks fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Completed</h6>
+                            <h3>{{ stats.status_stats.get('Completed', 0) }}</h3>
+                        </div>
+                        <i class="fas fa-check-circle fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">In Progress</h6>
+                            <h3>{{ stats.status_stats.get('In progress', 0) }}</h3>
+                        </div>
+                        <i class="fas fa-spinner fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Overdue</h6>
+                            <h3>{{ stats.overdue }}</h3>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选表单 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('requirement.index') }}" id="filterForm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        {{ filter_form.keyword.label(class="form-label") }}
+                        {{ filter_form.keyword(class="form-control", placeholder="Search by title, description, number...") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ filter_form.type.label(class="form-label") }}
+                        {{ filter_form.type(class="form-select") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ filter_form.status.label(class="form-label") }}
+                        {{ filter_form.status(class="form-select") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ filter_form.priority.label(class="form-label") }}
+                        {{ filter_form.priority(class="form-select") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ filter_form.project_id.label(class="form-label") }}
+                        {{ filter_form.project_id(class="form-select") }}
+                    </div>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-3">
+                        {{ filter_form.module_id.label(class="form-label") }}
+                        {{ filter_form.module_id(class="form-select") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ filter_form.assignee_id.label(class="form-label") }}
+                        {{ filter_form.assignee_id(class="form-select") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ filter_form.start_date.label(class="form-label") }}
+                        {{ filter_form.start_date(class="form-control") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ filter_form.end_date.label(class="form-label") }}
+                        {{ filter_form.end_date(class="form-control") }}
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{{ url_for('requirement.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i> Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Requirements List表格 -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="requirementTable">
+                    <thead>
+                        <tr>
+                            <th width="30">
+                                {% if current_user.role != 'viewer' %}
+                                <input type="checkbox" class="form-check-input" id="selectAll">
+                                {% endif %}
+                            </th>
+                            <th>REQ Number</th>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Assignee</th>
+                            <th>Project</th>
+                            <th>Due Date</th>
+                            <th>Completeness</th>
+                            <th>Create Time</th>
+                            <th width="150">OP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requirements.items %}
+                        <tr data-id="{{ req.id }}">
+                            <td>
+                                {% if current_user.role != 'viewer' %}
+                                <input type="checkbox" class="form-check-input requirement-checkbox" value="{{ req.id }}">
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('requirement.view', id=req.id) }}" class="text-decoration-none">
+                                    <code>{{ req.code }}</code>
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('requirement.view', id=req.id) }}" class="text-decoration-none">
+                                    {{ req.title }}
+                                </a>
+                                {% if req.tags %}
+                                <div class="mt-1">
+                                    {% for tag in req.tags[:3] %}
+                                    <span class="badge bg-secondary" style="font-size: 0.7em;">{{ tag.name }}</span>
+                                    {% endfor %}
+                                    {% if req.tags|length > 3 %}
+                                    <span class="badge bg-secondary" style="font-size: 0.7em;">+{{ req.tags|length - 3 }}</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ req.type }}</span>
+                            </td>
+                            <td>
+                                {% if req.priority == 'Critical' %}
+                                <span class="badge bg-danger">关键</span>
+                                {% elif req.priority == 'High' %}
+                                <span class="badge bg-warning">高</span>
+                                {% elif req.priority == 'Medium' %}
+                                <span class="badge bg-primary">中</span>
+                                {% else %}
+                                <span class="badge bg-secondary">低</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set status_colors = {
+                                    'Draft': 'secondary',
+                                    'Submitted': 'info',
+                                    'Under Review': 'warning',
+                                    'Approved': 'success',
+                                    'In progress': 'primary',
+                                    'Testing': 'info',
+                                    'Completed': 'success',
+                                    'Rejected': 'danger',
+                                    'Cancelled': 'danger',
+                                    'On Hold': 'secondary'
+                                } %}
+                                <span class="badge bg-{{ status_colors.get(req.status, 'light text-dark') }}">{{ req.status }}</span>
+                            </td>
+                            <td>
+                                {% if req.assignee %}
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ req.assignee.avatar or '/static/default-avatar.png' }}" 
+                                         class="rounded-circle me-2" width="25" height="25"
+                                         data-bs-toggle="tooltip" title="{{ req.assignee.full_name }}">
+                                    <span class="text-truncate" style="max-width: 100px;">
+                                        {{ req.assignee.full_name }}
+                                    </span>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">未分配</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.project %}
+                                <span class="badge bg-light text-dark">{{ req.project.name }}</span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.due_date %}
+                                    {% if req.due_date < now().date() and req.status != 'Completed' %}
+                                    <span class="text-danger">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        {{ req.due_date.strftime('%Y-%m-%d') }}
+                                    </span>
+                                    {% else %}
+                                    {{ req.due_date.strftime('%Y-%m-%d') }}
+                                    {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set completeness = req.calculate_completeness() %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-{{ 'success' if completeness >= 80 else 'warning' if completeness >= 50 else 'danger' }}" 
+                                         style="width: {{ completeness }}%">
+                                        {{ completeness|round|int }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <small>{{ req.created_at.strftime('%Y-%m-%d') }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('requirement.view', id=req.id) }}" 
+                                       class="btn btn-outline-primary" data-bs-toggle="tooltip" title="查看">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if current_user.role != 'viewer' %}
+                                    <a href="{{ url_for('requirement.edit', id=req.id) }}" 
+                                       class="btn btn-outline-warning" data-bs-toggle="tooltip" title="编辑">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-success" 
+                                            onclick="cloneRequirement({{ req.id }})"
+                                            data-bs-toggle="tooltip" title="复制">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" 
+                                            onclick="deleteRequirement({{ req.id }})"
+                                            data-bs-toggle="tooltip" title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="12" class="text-center py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No demand data available</p>
+                                {% if current_user.role != 'viewer' %}
+                                <a href="{{ url_for('requirement.create') }}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Create First Demand
+                                </a>
+                                {% else %}
+                                <p class="text-muted">You can view existing requests, but you cannot create new ones.</p>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 批量操作 -->
+            {% if requirements.items and current_user.role != 'viewer' %}
+            <div class="mt-3 d-none" id="batchActions">
+                <div class="d-flex align-items-center">
+                    <span class="me-3">已选择 <span id="selectedCount">0</span> 项</span>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-primary" onclick="batchChangeStatus()">
+                            批量修改状态
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="batchAssign()">
+                            批量分配
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="batchDelete()">
+                            批量删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 分页 -->
+            {% if requirements and requirements.pages and requirements.pages > 1 %}
+            <nav class="mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="text-muted">
+                        显示第 {{ requirements.page }} 页，共 {{ requirements.pages }} 页，总计 {{ requirements.total }} 条记录
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        {% set current_per_page = request.args.get('per_page', 20)|int %}
+                        {% set args_without_per_page = request.args.to_dict() %}
+                        {% set _ = args_without_per_page.pop('per_page', None) %}
+                        <a href="{{ url_for('requirement.index', per_page=10, **args_without_per_page) }}" 
+                           class="btn btn-outline-secondary {{ 'active' if current_per_page == 10 else '' }}">
+                            10条/页
+                        </a>
+                        <a href="{{ url_for('requirement.index', per_page=20, **args_without_per_page) }}" 
+                           class="btn btn-outline-secondary {{ 'active' if current_per_page == 20 else '' }}">
+                            20条/页
+                        </a>
+                        <a href="{{ url_for('requirement.index', per_page=50, **args_without_per_page) }}" 
+                           class="btn btn-outline-secondary {{ 'active' if current_per_page == 50 else '' }}">
+                            50条/页
+                        </a>
+                    </div>
+                </div>
+                <ul class="pagination justify-content-center">
+                    {% set args_without_page = request.args.to_dict() %}
+                    {% set _ = args_without_page.pop('page', None) %}
+                    {% if requirements.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('requirement.index', page=requirements.prev_num, **args_without_page) }}">
+                            <i class="fas fa-chevron-left"></i> 上一页
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in requirements.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
+                        {% if page_num %}
+                            <li class="page-item {{ 'active' if page_num == requirements.page else '' }}">
+                                <a class="page-link" href="{{ url_for('requirement.index', page=page_num, **args_without_page) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if requirements.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('requirement.index', page=requirements.next_num, **args_without_page) }}">
+                            下一页 <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// 全选/取消全选
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.requirement-checkbox');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    updateBatchActions();
+});
+
+// 更新批量操作显示
+function updateBatchActions() {
+    const checkedBoxes = document.querySelectorAll('.requirement-checkbox:checked');
+    const batchActions = document.getElementById('batchActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (checkedBoxes.length > 0) {
+        batchActions.classList.remove('d-none');
+        selectedCount.textContent = checkedBoxes.length;
+    } else {
+        batchActions.classList.add('d-none');
+    }
+}
+
+// 监听复选框变化
+document.querySelectorAll('.requirement-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateBatchActions);
+});
+
+// 删除需求
+function deleteRequirement(id) {
+    if (confirm('确定要删除这个需求吗？此操作不可恢复。')) {
+        // 获取CSRF令牌
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        fetch(`/requirements/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('删除失败，请稍后重试');
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('删除失败，请稍后重试');
+        });
+    }
+}
+
+// 复制需求
+function cloneRequirement(id) {
+    if (confirm('确定要复制这个需求吗？')) {
+        fetch(`/requirements/${id}/clone`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            }
+        });
+    }
+}
+
+// 初始化工具提示
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+</script>
+{% endblock %}

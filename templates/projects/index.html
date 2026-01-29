@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}项目管理 - 需求管理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-project-diagram"></i> 项目管理</h2>
+            {% if current_user.role in ['admin', 'manager'] %}
+            <a href="{{ url_for('project.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 新建项目
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- 筛选表单 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> 筛选条件</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('project.index') }}">
+                    <div class="row">
+                        <div class="col-md-3">
+                            {{ filter_form.keyword.label(class="form-label") }}
+                            {{ filter_form.keyword(class="form-control", placeholder="项目名称、编码或描述") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ filter_form.status.label(class="form-label") }}
+                            {{ filter_form.status(class="form-select") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ filter_form.manager_id.label(class="form-label") }}
+                            {{ filter_form.manager_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ filter_form.start_date.label(class="form-label") }}
+                            {{ filter_form.start_date(class="form-control") }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ filter_form.end_date.label(class="form-label") }}
+                            {{ filter_form.end_date(class="form-control") }}
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="{{ url_for('project.index') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-undo"></i>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 项目列表 -->
+        {% if projects.items %}
+        <div class="row">
+            {% for project in projects.items %}
+            <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <a href="{{ url_for('project.detail', id=project.id) }}" class="text-decoration-none">
+                                {{ project.name }}
+                            </a>
+                        </h5>
+                        <div>
+                            {% set status_colors = {
+                                'active': 'success',
+                                'planning': 'info',
+                                'completed': 'primary',
+                                'on_hold': 'warning',
+                                'cancelled': 'danger'
+                            } %}
+                            {% set status_names = {
+                                'active': 'In Progress',
+                                'planning': 'In planning',
+                                'completed': 'Completed',
+                                'on_hold': 'On Hold',
+                                'cancelled': 'Cancelled'
+                            } %}
+                            <span class="badge bg-{{ status_colors.get(project.status, 'secondary') }}">
+                                {{ status_names.get(project.status, project.status) }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text text-muted mb-2">
+                            <small><i class="fas fa-code"></i> {{ project.code }}</small>
+                        </p>
+                        
+                        {% if project.description %}
+                        <p class="card-text">
+                            {{ project.description[:100] }}
+                            {% if project.description|length > 100 %}...{% endif %}
+                        </p>
+                        {% endif %}
+                        
+                        <div class="row text-center mb-3">
+                            <div class="col-4">
+                                <div class="text-primary">
+                                    <h5>{{ project_stats[project.id].total }}</h5>
+                                    <small class="text-muted">总需求</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-success">
+                                    <h5>{{ project_stats[project.id].completed }}</h5>
+                                    <small class="text-muted">Completed</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-info">
+                                    <h5>{{ project_stats[project.id].completion_rate|round(1) }}%</h5>
+                                    <small class="text-muted">完成率</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 进度条 -->
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div class="progress-bar bg-success" 
+                                 style="width: {{ project_stats[project.id].completion_rate }}%"
+                                 title="完成率: {{ project_stats[project.id].completion_rate|round(1) }}%">
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted small">
+                                {% if project.manager %}
+                                <i class="fas fa-user"></i> {{ project.manager.full_name or project.manager.username }}
+                                {% endif %}
+                            </div>
+                            <div class="text-muted small">
+                                {% if project.start_date %}
+                                {{ project.start_date.strftime('%Y-%m-%d') }}
+                                {% endif %}
+                                {% if project.end_date %}
+                                - {{ project.end_date.strftime('%Y-%m-%d') }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="btn-group w-100" role="group">
+                            <a href="{{ url_for('project.detail', id=project.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i> 详情
+                            </a>
+                            {% if current_user.role == 'admin' or project.manager_id == current_user.id %}
+                            <a href="{{ url_for('project.edit', id=project.id) }}" 
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-edit"></i> 编辑
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('project.statistics', id=project.id) }}" 
+                               class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-chart-bar"></i> 统计
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if projects.pages > 1 %}
+        <nav aria-label="项目分页">
+            <ul class="pagination justify-content-center">
+                {% if projects.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('project.index', page=projects.prev_num, **request.args) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in projects.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != projects.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('project.index', page=page_num, **request.args) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if projects.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('project.index', page=projects.next_num, **request.args) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">暂无项目</h4>
+                <p class="text-muted">还没有创建任何项目</p>
+                {% if current_user.role in ['admin', 'manager'] %}
+                <a href="{{ url_for('project.create') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 创建第一个项目
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// 自动提交表单当筛选条件改变时
+document.querySelectorAll('select[name^="filter_form"]').forEach(select => {
+    select.addEventListener('change', function() {
+        this.form.submit();
+    });
+});
+
+// 日期选择器自动提交
+document.querySelectorAll('input[type="date"]').forEach(input => {
+    input.addEventListener('change', function() {
+        this.form.submit();
+    });
+});
+</script>
+{% endblock %}
