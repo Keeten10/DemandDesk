@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fullcalendar.min.css') }}">
+<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css"> -->
+<style>
+    .calendar-container {
+        width: 100%;
+        height: 700px;
+        margin-top: 20px;
+    }
+    
+    /* 项目颜色类 */
+    {% set colors = ['#6495ED', '#3CB371', '#FFA500', '#9370DB', '#20B2AA', '#FF6347', '#4682B4', '#32CD32', '#BA55D3', '#FF69B4'] %}
+    {% for project in projects %}
+    .project-{{ project.id }} {
+        background-color: {{ colors[loop.index0 % colors|length] }} !important;
+        border-color: {{ colors[loop.index0 % colors|length] }} !important;
+    }
+    {% endfor %}
+    
+    /* 任务状态颜色 */
+    .fc-event.status-not-started {
+        background-color: #ccc;
+        border-color: #aaa;
+    }
+    .fc-event.status-in-progress {
+        background-color: #6495ED;
+        border-color: #4A76C9;
+    }
+    .fc-event.status-completed {
+        background-color: #3CB371;
+        border-color: #2A9959;
+    }
+    .fc-event.status-cancelled {
+        background-color: #DC143C;
+        border-color: #B01030;
+        text-decoration: line-through;
+    }
+    .fc-event.task-notstart {
+        opacity: 0.7;
+    }
+    .fc-event.task-doing {
+        opacity: 0.8;
+    }
+    .fc-event.task-done {
+        opacity: 0.6;
+    }
+    .fc-event.task-a {
+        opacity: 0.5;
+    }
+    /* 任务优先级指示器 */
+    .priority-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 5px;
+        border-radius: 50%;
+    }
+    .priority-low {
+        background-color: #999;
+    }
+    .priority-medium {
+        background-color: #666;
+    }
+    .priority-high {
+        background-color: #ff9900;
+    }
+    .priority-urgent {
+        background-color: #ff0000;
+    }
+    
+    /* 任务弹出详情 */
+    .task-popup {
+        padding: 10px;
+        max-width: 300px;
+    }
+    .task-popup h5 {
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+    .task-popup .task-meta {
+        margin-bottom: 5px;
+        font-size: 0.9em;
+    }
+    .task-popup .task-description {
+        margin-top: 10px;
+        font-size: 0.9em;
+    }
+    
+    /* 日历视图过滤器 */
+    .calendar-filters {
+        margin-bottom: 15px;
+    }
+    
+    /* 项目颜色图例 */
+    .project-legend {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .project-legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 15px;
+    }
+    .project-color-box {
+        width: 15px;
+        height: 15px;
+        margin-right: 5px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>个人日历视图</h1>
+
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="calendar-filters">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="project-filter">按项目筛选:</label>
+                        <select id="project-filter" class="form-select">
+                            <option value="">全部项目</option>
+                            {% for project in projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="assignee-filter">按负责人筛选:</label>
+                        <select id="assignee-filter" class="form-select">
+                            <option value="">全部</option>
+                            {% for member in project_members %}
+                            <option value="{{ member.full_name }}">{{ member.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="status-filter">按状态筛选:</label>
+                        <select id="status-filter" class="form-select">
+                            <option value="">全部</option>
+                            <option value="未开始">未开始</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="priority-filter">按优先级筛选:</label>
+                        <select id="priority-filter" class="form-select">
+                            <option value="">全部</option>
+                            <option value="低">低</option>
+                            <option value="中">中</option>
+                            <option value="高">高</option>
+                            <option value="紧急">紧急</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 项目颜色图例 -->
+        <div class="project-legend">
+            {% for project in projects %}
+            <div class="project-legend-item">
+                <div class="project-color-box project-{{ project.id }}"></div>
+                <span>{{ project.name }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div id="calendar" class="calendar-container"></div>
+        
+        <div id="no_dates_warning" class="no-dates-warning text-center mt-4" style="display: none;">
+            <div class="alert alert-warning">
+                <h4>没有可显示的任务</h4>
+                <p>日历视图需要任务具有开始日期和/或截止日期才能显示。请为任务添加日期信息。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 任务详情模态框 -->
+<div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskModalLabel">任务详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="taskModalBody">
+                <!-- 任务详情将在这里动态加载 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <a href="#" class="btn btn-primary" id="editTaskBtn">编辑任务</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/3rd/moment.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/3rd/fullcalendar.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/3rd/fullcalendar.zh-cn.js') }}"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script> -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/zh-cn.min.js"></script> -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script> -->
+<script>
+    function prepareCalendarTasks(tasks) {
+        var calendarTasks = [];
+        var colors = ['#6495ED', '#3CB371', '#FFA500', '#9370DB', '#20B2AA', '#FF6347', '#4682B4', '#32CD32', '#BA55D3', '#FF69B4'];
+        
+        tasks.forEach(function(task) {
+            // 处理日期时间
+            let startDate = task.start;
+            let endDate = task.end;
+            
+            // 如果有日期但没有时间信息，添加时间部分
+            if (startDate && !startDate.includes(":")) {
+                startDate = `${startDate} 09:00`;
+            } else if (startDate && startDate.includes("T")) {
+                startDate = startDate.replace("T", " ").substring(0, 16);
+            }
+
+            if (endDate && !endDate.includes(":")) {
+                endDate = `${endDate} 18:00`;
+            } else if (endDate && endDate.includes("T")) {
+                endDate = endDate.replace("T", " ").substring(0, 16);
+            }
+            
+            // 如果没有开始日期但有截止日期，则假设任务从截止日期前的预计工时开始
+            if (!startDate && endDate) {
+                const estimatedHours = Math.max(2, task.estimated_hours || 2);
+                const endDateObj = new Date(endDate);
+                const startDateObj = new Date(endDateObj);
+                startDateObj.setHours(endDateObj.getHours() - estimatedHours);
+                startDate = startDateObj.toISOString().substring(0, 16).replace("T", " ");
+            }
+            
+            // 如果有开始日期但没有截止日期，则假设任务持续预计工时
+            if (startDate && !endDate) {
+                const estimatedHours = Math.max(2, task.estimated_hours || 2);
+                const startDateObj = new Date(startDate);
+                const endDateObj = new Date(startDateObj);
+                endDateObj.setHours(startDateObj.getHours() + estimatedHours);
+                endDate = endDateObj.toISOString().substring(0, 16).replace("T", " ");
+            }
+            
+            // 确保有合理的日期范围
+            if (!startDate || !endDate) {
+                const today = new Date();
+                startDate = today.toISOString().substring(0, 16).replace("T", " ");
+                const endDateObj = new Date(today);
+                endDateObj.setHours(today.getHours() + Math.max(2, (task.estimated_hours || 2)));
+                endDate = endDateObj.toISOString().substring(0, 16).replace("T", " ");
+            }
+
+            var classNames = ['project-' + task.project_id];
+            if(task.status=="未开始"){
+                classNames.push('task-notstart');
+            }else if(task.status=="In Progress"){
+                classNames.push('task-doing');            
+            }else if(task.status=="Completed"){
+                classNames.push('task-done');
+            }else if(task.status=="Cancelled"){
+                classNames.push('task-a');
+            }
+
+            // 创建日历事件
+            var event = {
+                id: task.id,
+                title: task.title,
+                start: startDate,
+                end: endDate,
+                allDay: false,
+                classNames: classNames,
+                backgroundColor: colors[task.project_id % colors.length],
+                borderColor: colors[task.project_id % colors.length],
+                // 扩展属性
+                extendedProps: {
+                    id: task.id,
+                    status: task.status,
+                    priority: task.priority,
+                    assignee: task.assignee,
+                    description: task.description,
+                    estimated_hours: task.estimated_hours,
+                    actual_hours: task.actual_hours,
+                    start_date: startDate,
+                    due_date: endDate,
+                    project_id: task.project_id,
+                    project_name: task.project_name
+                }
+            };
+            
+            calendarTasks.push(event);
+        });
+        
+        return calendarTasks;
+    }
+
+    $(document).ready(function() {
+        var rawTasks = {{ tasks_json|safe }};
+        var calendarEvents = prepareCalendarTasks(rawTasks);
+        var calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+            locale: 'zh-cn',
+            initialView: 'timeGridWeek',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+            },
+            buttonText: {
+                today: '今天',
+                month: '月',
+                week: '周',
+                day: '日',
+                list: '列表'
+            },
+            navLinks: true,
+            editable: true,
+            dayMaxEvents: true,
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
+                meridiem: false,
+                hour12: false
+            },
+            events: calendarEvents,
+            eventContent: function(info) {
+                var content = document.createElement('div');
+                content.innerHTML = '<div class="fc-event-title">';
+                
+                // 添加优先级指示器
+                if (info.event.extendedProps.priority) {
+                    var priorityClass = 'priority-' + info.event.extendedProps.priority.toLowerCase();
+                    content.innerHTML += '<span class="priority-indicator ' + priorityClass + '"></span>';
+                }
+                
+                // 添加任务标题
+                content.innerHTML += info.event.title;
+                
+                // 添加项目名称
+                if (info.event.extendedProps.project_name) {
+                    content.innerHTML += ' <small>[' + info.event.extendedProps.project_name + ']</small>';
+                }
+                
+                // 添加负责人信息
+                if (info.event.extendedProps.assignee) {
+                    content.innerHTML += ' <small>(' + info.event.extendedProps.assignee + ')</small>';
+                }
+                
+                content.innerHTML += '</div>';
+                
+                return { domNodes: [content] };
+            },
+            eventClick: function(info) {
+                var task = info.event.extendedProps;
+                var taskId = task.id;
+                
+                var html = '<div class="task-details">';
+                html += '<h4>' + info.event.title + '</h4>';
+                
+                html += '<div class="task-meta">';
+                html += '<p><strong>项目:</strong> ' + (task.project_name || '未设置') + '</p>';
+                html += '<p><strong>状态:</strong> ' + (task.status || '未设置') + '</p>';
+                html += '<p><strong>优先级:</strong> ' + (task.priority || '未设置') + '</p>';
+                html += '<p><strong>负责人:</strong> ' + (task.assignee || '未分配') + '</p>';
+                
+                if (task.start_date) {
+                    html += '<p><strong>开始日期:</strong> ' + task.start_date + '</p>';
+                }
+                
+                if (task.due_date) {
+                    html += '<p><strong>截止日期:</strong> ' + task.due_date + '</p>';
+                }
+                
+                if (task.estimated_hours) {
+                    html += '<p><strong>估计工时:</strong> ' + task.estimated_hours + ' 小时</p>';
+                }
+                
+                if (task.actual_hours) {
+                    html += '<p><strong>实际工时:</strong> ' + task.actual_hours + ' 小时</p>';
+                }
+                
+                html += '</div>';
+                
+                if (task.description) {
+                    html += '<div class="task-description">';
+                    html += '<h5>描述</h5>';
+                    html += '<p>' + task.description + '</p>';
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+                
+                $('#taskModalBody').html(html);
+                
+                var taskModal = new bootstrap.Modal(document.getElementById('taskModal'));
+                taskModal.show();
+            },
+            eventDrop: function(info) {
+                var taskId = info.event.extendedProps.id;
+                var newStartDate = info.event.start ? moment(info.event.start).format('YYYY-MM-DD HH:mm') : '';
+                var newEndDate = info.event.end ? moment(info.event.end).format('YYYY-MM-DD HH:mm') : '';
+                
+                if(info.event.start && newEndDate=="" && info.event.extendedProps.estimated_hours!=0){
+                    var endDateObj = new Date(info.event.start);
+                    endDateObj.setTime(endDateObj.getTime() + info.event.extendedProps.estimated_hours*3600*1000);
+                    newEndDate = moment(endDateObj).format('YYYY-MM-DD HH:mm');                
+                }
+                
+                // 发送AJAX请求更新日期
+                $.ajax({
+                    url: '/api/tasks/' + taskId + '/update_dates',
+                    method: 'POST',
+                    data: {
+                        start_date: newStartDate,
+                        due_date: newEndDate
+                    },
+                    success: function(response) {
+                        // 可选：显示提示
+                        // showNotification('任务日期已更新', 'success');
+                    },
+                    error: function() {
+                        // showNotification('更新任务日期失败', 'danger');
+                        info.revert(); // 恢复原始位置
+                    }
+                });
+            },
+            eventResize: function(info) {
+                var taskId = info.event.extendedProps.id;
+                var newEndDate = null;
+                var newStartDate = info.event.start ? moment(info.event.start).format('YYYY-MM-DD HH:mm') : '';
+                
+                if (info.event.end) {
+                    var endMoment = moment(info.event.end);
+                    newEndDate = endMoment.format('YYYY-MM-DD HH:mm');
+                }
+                
+                // 发送AJAX请求更新截止日期
+                $.ajax({
+                    url: '/api/tasks/' + taskId + '/update_dates',
+                    method: 'POST',
+                    data: {
+                        start_date: newStartDate,
+                        due_date: newEndDate
+                    },
+                    success: function(response) {
+                        // showNotification('任务截止日期已更新', 'success');
+                    },
+                    error: function() {
+                        // showNotification('更新任务截止日期失败', 'danger');
+                        info.revert(); // 恢复原始大小
+                    }
+                });
+            }
+        });
+        
+        calendar.render();
+        
+        // 检查是否有任务数据
+        if ({{ tasks_json|safe }}.length === 0) {
+            $('#no_dates_warning').show();
+            $('#calendar').hide();
+        }
+        
+        // 过滤功能
+        function applyFilters() {
+            var projectFilter = $('#project-filter').val();
+            var assigneeFilter = $('#assignee-filter').val();
+            var statusFilter = $('#status-filter').val();
+            var priorityFilter = $('#priority-filter').val();
+            
+            calendar.getEvents().forEach(function(event) {
+                var visible = true;
+                var props = event.extendedProps;
+                
+                if (projectFilter && props.project_id != projectFilter) {
+                    visible = false;
+                }
+                
+                if (assigneeFilter && props.assignee !== assigneeFilter) {
+                    visible = false;
+                }
+                
+                if (statusFilter && props.status !== statusFilter) {
+                    visible = false;
+                }
+                
+                if (priorityFilter && props.priority !== priorityFilter) {
+                    visible = false;
+                }
+                
+                if (visible) {
+                    event.setProp('display', 'auto');
+                } else {
+                    event.setProp('display', 'none');
+                }
+            });
+        }
+        
+        // 监听过滤器变化
+        $('#project-filter, #assignee-filter, #status-filter, #priority-filter').change(function() {
+            applyFilters();
+        });
+    });
+</script>
+{% endblock %}

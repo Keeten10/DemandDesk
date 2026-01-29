@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}新建用户 - 需求管理系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus"></i> 新建用户
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            {% for field, errors in form.errors.items() %}
+                                {% for error in errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.username.label(class="form-label") }}
+                                    {{ form.username(class="form-control", id="username") }}
+                                    <div class="form-text">3-20个字符，只能包含字母、数字和下划线</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.email.label(class="form-label") }}
+                                    {{ form.email(class="form-control", id="email") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.full_name.label(class="form-label") }}
+                                    {{ form.full_name(class="form-control", id="full_name") }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.department.label(class="form-label") }}
+                                    {{ form.department(class="form-control", id="department") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.role.label(class="form-label") }}
+                                    {{ form.role(class="form-select", id="role") }}
+                                    <div class="form-text">选择用户的初始角色</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.password.label(class="form-label") }}
+                                    {{ form.password(class="form-control", id="password") }}
+                                    <div class="form-text">密码至少8位，包含大小写字母、数字和特殊字符</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.password2.label(class="form-label") }}
+                                    {{ form.password2(class="form-control", id="password2") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>提示：</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>新用户创建后将自动启用</li>
+                                <li>用户可以在首次登录后修改个人信息和密码</li>
+                                <li>管理员可以随时修改用户的角色和状态</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('auth.admin_users') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> 返回列表
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 创建用户
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 表单验证
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const username = document.getElementById('username');
+    const password = document.getElementById('password');
+    
+    // 用户名验证
+    if (username) {
+        username.addEventListener('input', function() {
+            const value = this.value;
+            const pattern = /^[a-zA-Z0-9_]+$/;
+            if (value && !pattern.test(value)) {
+                this.setCustomValidity('用户名只能包含字母、数字和下划线');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    
+    // 密码强度验证
+    if (password) {
+        password.addEventListener('input', function() {
+            const value = this.value;
+            if (value.length < 8) {
+                this.setCustomValidity('密码至少8位');
+                return;
+            }
+            
+            let score = 0;
+            if (/[a-z]/.test(value)) score++;
+            if (/[A-Z]/.test(value)) score++;
+            if (/[0-9]/.test(value)) score++;
+            if (/[^a-zA-Z0-9]/.test(value)) score++;
+            
+            if (score < 3) {
+                this.setCustomValidity('密码需要包含大小写字母、数字和特殊字符中的至少3种');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

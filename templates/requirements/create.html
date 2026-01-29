@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}创建需求{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- 页面标题 -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plus-circle"></i> 创建新需求</h2>
+                <div class="btn-group">
+                    <a href="{{ url_for('requirement.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> 返回列表
+                    </a>
+                    <button type="button" class="btn btn-outline-primary" onclick="saveDraftFromTop()">
+                        <i class="fas fa-save"></i> 保存草稿
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="submitFormFromTop()">
+                        <i class="fas fa-check"></i> 创建需求
+                    </button>
+                </div>
+            </div>
+
+            <!-- 表单 -->
+            <form method="POST" enctype="multipart/form-data" id="requirementForm">
+                {{ form.hidden_tag() }}
+                
+                <div class="row">
+                    <!-- 左侧主要内容 -->
+                    <div class="col-md-8">
+                        <!-- 基本信息 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">基本信息</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="mb-3">
+                                        {{ form.version.label(class="form-label") }}
+                                        {{ form.version(class="form-control", placeholder="如: v1.0.0") }}
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.title.label(class="form-label required") }}
+                                    {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""), 
+                                                 placeholder="简洁明确的需求标题") }}
+                                    {% if form.title.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.title.errors[0] }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.description.label(class="form-label required") }}
+                                    {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), 
+                                                      rows="5", 
+                                                      placeholder="详细描述需求内容...") }}
+                                    {% if form.description.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.description.errors[0] }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        {{ form.type.label(class="form-label required") }}
+                                        {{ form.type(class="form-select") }}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        {{ form.priority.label(class="form-label required") }}
+                                        {{ form.priority(class="form-select") }}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        {{ form.status.label(class="form-label") }}
+                                        {{ form.status(class="form-select") }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 详细描述 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">详细描述</h5>
+                                <small class="text-muted">完整的需求描述有助于准确理解和实现需求</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.background.label(class="form-label") }}
+                                    {{ form.background(class="form-control", rows="3", 
+                                                      placeholder="说明需求的背景和产生原因...") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.objective.label(class="form-label") }}
+                                    {{ form.objective(class="form-control", rows="3", 
+                                                     placeholder="明确需求要达到的目标...") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.scope.label(class="form-label") }}
+                                    {{ form.scope(class="form-control", rows="3", 
+                                                 placeholder="定义需求的范围边界...") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.acceptance_criteria.label(class="form-label") }}
+                                    {{ form.acceptance_criteria(class="form-control", rows="4", 
+                                                               placeholder="列出需求的验收标准...\n1. \n2. \n3. ") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 约束和风险 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">约束和风险</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.assumptions.label(class="form-label") }}
+                                    {{ form.assumptions(class="form-control", rows="3", 
+                                                       placeholder="列出需求实现的前提假设...") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.constraints.label(class="form-label") }}
+                                    {{ form.constraints(class="form-control", rows="3", 
+                                                       placeholder="技术、资源、时间等约束条件...") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.risks.label(class="form-label") }}
+                                    {{ form.risks(class="form-control", rows="3", 
+                                                 placeholder="可能的风险及应对措施...") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧配置信息 -->
+                    <div class="col-md-4">
+                        <!-- 归属信息 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">归属信息</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.project_id.label(class="form-label") }}
+                                    {{ form.project_id(class="form-select") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.module_id.label(class="form-label") }}
+                                    {{ form.module_id(class="form-select") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.category_id.label(class="form-label") }}
+                                    {{ form.category_id(class="form-select") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.source.label(class="form-label") }}
+                                    {{ form.source(class="form-control", placeholder="如：客户反馈、产品规划等") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 人员分配 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">人员分配</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.assignee_id.label(class="form-label") }}
+                                    {{ form.assignee_id(class="form-select") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.reviewer_id.label(class="form-label") }}
+                                    {{ form.reviewer_id(class="form-select") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 时间和估算 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">时间和估算</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.start_date.label(class="form-label") }}
+                                    {{ form.start_date(class="form-control") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.due_date.label(class="form-label") }}
+                                    {{ form.due_date(class="form-control") }}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.estimated_hours.label(class="form-label") }}
+                                    <div class="input-group">
+                                        {{ form.estimated_hours(class="form-control", placeholder="0") }}
+                                        <span class="input-group-text">小时</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.story_points.label(class="form-label") }}
+                                    {{ form.story_points(class="form-control", placeholder="1-100") }}
+                                    <small class="text-muted">用于敏捷开发的工作量估算</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.business_value.label(class="form-label") }}
+                                    <div class="input-group">
+                                        {{ form.business_value(class="form-control", placeholder="1-100") }}
+                                        <span class="input-group-text">分</span>
+                                    </div>
+                                    <small class="text-muted">业务价值评分，用于优先级排序</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 标签和关联 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">标签和关联</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.tags.label(class="form-label") }}
+                                    {{ form.tags(class="form-select", multiple=True, size=4) }}
+                                    <small class="text-muted">按住Ctrl键可多选</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.dependencies.label(class="form-label") }}
+                                    {{ form.dependencies(class="form-select", multiple=True, size=4) }}
+                                    <small class="text-muted">选择本需求依赖的其他需求</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 附件 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">附件</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.attachments.label(class="form-label") }}
+                                    {{ form.attachments(class="form-control") }}
+                                    <small class="text-muted">支持的格式：PDF, Word, Excel, 图片</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="saveDraft()">
+                                            <i class="fas fa-save"></i> 保存草稿
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary" onclick="previewRequirement()">
+                                            <i class="fas fa-eye"></i> 预览
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('requirement.index') }}" class="btn btn-secondary">
+                                            <i class="fas fa-times"></i> 取消
+                                        </a>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-check"></i> 创建需求
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-label.required::after {
+    content: " *";
+    color: red;
+}
+</style>
+
+<script>
+// 从顶部保存草稿
+function saveDraftFromTop() {
+    const form = document.getElementById('requirementForm');
+    const statusField = document.querySelector('[name="status"]');
+    statusField.value = '草稿';
+    form.submit();
+}
+
+// 从顶部提交表单
+function submitFormFromTop() {
+    const form = document.getElementById('requirementForm');
+    // 验证必填字段
+    const requiredFields = form.querySelectorAll('[required], .required input, .required textarea, .required select');
+    let hasEmptyRequired = false;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            hasEmptyRequired = true;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    if (hasEmptyRequired) {
+        alert('请填写所有必填字段');
+        // 滚动到第一个错误字段
+        const firstError = form.querySelector('.is-invalid');
+        if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstError.focus();
+        }
+        return;
+    }
+    
+    form.submit();
+}
+
+// 保存草稿
+function saveDraft() {
+    const form = document.getElementById('requirementForm');
+    const statusField = document.querySelector('[name="status"]');
+    statusField.value = '草稿';
+    form.submit();
+}
+
+// 预览需求
+function previewRequirement() {
+    // 实现预览功能
+    alert('预览功能In progress...');
+}
+
+// 自动保存草稿（每60秒）
+let autoSaveTimer;
+function enableAutoSave() {
+    autoSaveTimer = setInterval(() => {
+        // 通过AJAX保存草稿
+        console.log('自动保存草稿...');
+    }, 60000);
+}
+
+// 页面加载时启用自动保存
+document.addEventListener('DOMContentLoaded', enableAutoSave);
+
+// 离开页面时提醒
+window.addEventListener('beforeunload', function (e) {
+    const form = document.getElementById('requirementForm');
+    const inputs = form.querySelectorAll('input[type="text"], textarea');
+    let hasContent = false;
+    
+    inputs.forEach(input => {
+        if (input.value.trim()) {
+            hasContent = true;
+        }
+    });
+    
+    if (hasContent) {
+        e.preventDefault();
+        e.returnValue = '您有未保存的更改，确定要离开吗？';
+    }
+});
+</script>
+{% endblock %}

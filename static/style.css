@@ -1,0 +1,87 @@
+/* 自定义样式 */
+body {
+    font-family: 'Microsoft YaHei', 'Arial', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    flex: 1;
+}
+
+.footer {
+    margin-top: auto;
+}
+
+/* 表格样式 */
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f1f3f5;
+}
+
+/* 卡片样式 */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+/* 徽章样式 */
+.badge {
+    padding: 0.35em 0.65em;
+    font-size: 0.85em;
+}
+
+/* 按钮组样式 */
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* 分页样式 */
+.pagination {
+    margin-top: 2rem;
+}
+
+/* 表单样式 */
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* 警告框样式 */
+.alert {
+    border-radius: 0.5rem;
+}
+
+/* 导航栏样式 */
+.navbar-brand {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .table {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.25rem !important;
+        margin-bottom: 0.25rem;
+    }
+}

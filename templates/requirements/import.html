@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}批量导入需求{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- 页面标题 -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-file-import"></i> 批量导入需求</h2>
+                <a href="{{ url_for('requirement.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回列表
+                </a>
+            </div>
+
+            <!-- 导入步骤 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">导入步骤说明</h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li class="mb-2">
+                            <strong>下载模板：</strong>
+                            <a href="{{ url_for('requirement.download_template') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download"></i> 下载Excel模板
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <strong>填写数据：</strong>按照模板格式填写需求数据，注意必填字段
+                        </li>
+                        <li class="mb-2">
+                            <strong>选择项目：</strong>选择要导入到的目标项目
+                        </li>
+                        <li class="mb-2">
+                            <strong>上传文件：</strong>选择填写好的Excel文件并上传
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- 导入表单 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">上传文件</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="importForm">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.project_id.label(class="form-label") }}
+                            {{ form.project_id(class="form-select") }}
+                            <small class="text-muted">选择需求要导入到的项目</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.file.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.file(class="form-control", accept=".xls,.xlsx", onchange="validateFile(this)") }}
+                                <label class="input-group-text" for="{{ form.file.id }}">
+                                    <i class="fas fa-file-excel"></i> 选择文件
+                                </label>
+                            </div>
+                            {% if form.file.errors %}
+                            <div class="text-danger">
+                                {{ form.file.errors[0] }}
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">仅支持 .xls 和 .xlsx 格式，文件大小不超过 10MB</small>
+                        </div>
+                        
+                        <!-- 文件预览区 -->
+                        <div id="fileInfo" class="alert alert-info d-none">
+                            <h6>文件信息</h6>
+                            <p class="mb-1">文件名：<span id="fileName"></span></p>
+                            <p class="mb-1">文件大小：<span id="fileSize"></span></p>
+                            <p class="mb-0">修改时间：<span id="fileDate"></span></p>
+                        </div>
+                        
+                        <!-- 导入选项 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">导入选项</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="skipDuplicate" checked>
+                                    <label class="form-check-label" for="skipDuplicate">
+                                        跳过重复的需求（根据标题判断）
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="autoAssign">
+                                    <label class="form-check-label" for="autoAssign">
+                                        自动分配给我
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sendNotification">
+                                    <label class="form-check-label" for="sendNotification">
+                                        导入完成后发送通知
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-primary" onclick="previewData()">
+                                <i class="fas fa-eye"></i> 预览数据
+                            </button>
+                            <div>
+                                <a href="{{ url_for('requirement.index') }}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> 取消
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="fas fa-upload"></i> 开始导入
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 导入历史 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">最近导入历史</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>导入时间</th>
+                                    <th>文件名</th>
+                                    <th>项目</th>
+                                    <th>成功/失败</th>
+                                    <th>操作人</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2024-01-15 14:30</td>
+                                    <td>requirements_batch_01.xlsx</td>
+                                    <td>项目A</td>
+                                    <td><span class="text-success">45</span> / <span class="text-danger">2</span></td>
+                                    <td>张三</td>
+                                </tr>
+                                <tr>
+                                    <td>2024-01-10 10:15</td>
+                                    <td>需求清单.xlsx</td>
+                                    <td>项目B</td>
+                                    <td><span class="text-success">28</span> / <span class="text-danger">0</span></td>
+                                    <td>李四</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 注意事项 -->
+            <div class="alert alert-warning mt-4">
+                <h6><i class="fas fa-exclamation-triangle"></i> 注意事项</h6>
+                <ul class="mb-0">
+                    <li>请确保Excel文件格式正确，必填字段不能为空</li>
+                    <li>需求编号如果留空，系统将自动生成</li>
+                    <li>日期格式应为 YYYY-MM-DD</li>
+                    <li>优先级值应为：关键, 高, 中, 低</li>
+                    <li>状态值应为系统定义的有效状态</li>
+                    <li>单次导入建议不超过500条记录</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 预览模态框 -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">数据预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent">
+                    <!-- 预览内容将通过JavaScript动态加载 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 验证文件
+function validateFile(input) {
+    const file = input.files[0];
+    if (file) {
+        // 检查文件类型
+        const allowedTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('请选择Excel文件（.xls或.xlsx）');
+            input.value = '';
+            return;
+        }
+        
+        // 检查文件大小（10MB）
+        if (file.size > 10 * 1024 * 1024) {
+            alert('文件大小不能超过10MB');
+            input.value = '';
+            return;
+        }
+        
+        // 显示文件信息
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(2) + ' KB';
+        document.getElementById('fileDate').textContent = new Date(file.lastModified).toLocaleString();
+        document.getElementById('fileInfo').classList.remove('d-none');
+    }
+}
+
+// 预览数据
+function previewData() {
+    const fileInput = document.querySelector('input[type="file"]');
+    if (!fileInput.files[0]) {
+        alert('请先选择文件');
+        return;
+    }
+    
+    // 这里应该通过AJAX上传文件并获取预览数据
+    // 示例代码
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    document.getElementById('previewContent').innerHTML = `
+        <div class="alert alert-info">
+            正在加载预览数据...
+        </div>
+    `;
+    modal.show();
+    
+    // 模拟加载预览数据
+    setTimeout(() => {
+        document.getElementById('previewContent').innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>行号</th>
+                            <th>标题</th>
+                            <th>描述</th>
+                            <th>类型</th>
+                            <th>优先级</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>示例需求1</td>
+                            <td>这是一个示例需求描述</td>
+                            <td>functional</td>
+                            <td>高</td>
+                            <td class="text-success">有效</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>示例需求2</td>
+                            <td>另一个需求描述</td>
+                            <td>business</td>
+                            <td>中</td>
+                            <td class="text-success">有效</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="alert alert-success mt-3">
+                文件验证通过，共发现 2 条有效数据
+            </div>
+        `;
+    }, 1000);
+}
+
+// 表单提交前验证
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    const fileInput = document.querySelector('input[type="file"]');
+    if (!fileInput.files[0]) {
+        e.preventDefault();
+        alert('请选择要导入的Excel文件');
+        return false;
+    }
+    
+    // 显示加载状态
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>导入中...';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - 项目统计 - 需求管理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('project.index') }}">项目管理</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('project.detail', id=project.id) }}">{{ project.name }}</a>
+                </li>
+                <li class="breadcrumb-item active">项目统计</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-chart-bar"></i> {{ project.name }} - 项目统计
+            </h2>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary" onclick="refreshStats()">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="exportStats()">
+                    <i class="fas fa-download"></i> 导出报告
+                </button>
+                <a href="{{ url_for('project.detail', id=project.id) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回
+                </a>
+            </div>
+        </div>
+
+        <!-- 统计概览 -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card bg-primary text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>{{ stats_data.requirements.total }}</h3>
+                                <p class="mb-0">Total demand</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-list fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>{{ stats_data.requirements.completed }}</h3>
+                                <p class="mb-0">Completed</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card bg-info text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>{{ stats_data.requirements.in_development }}</h3>
+                                <p class="mb-0">In progress</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-code fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card bg-warning text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>{{ stats_data.requirements.completion_rate }}%</h3>
+                                <p class="mb-0">完成率</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-percentage fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 需求状态分布 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-pie-chart"></i> 需求状态分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 300px;">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div class="row text-center">
+                                <div class="col-3">
+                                    <div class="border-end">
+                                        <h6 class="text-secondary">{{ stats_data.requirements.draft }}</h6>
+                                        <small class="text-muted">草稿</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="border-end">
+                                        <h6 class="text-info">{{ stats_data.requirements.in_development }}</h6>
+                                        <small class="text-muted">In progress</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="border-end">
+                                        <h6 class="text-warning">{{ stats_data.requirements.testing }}</h6>
+                                        <small class="text-muted">测试中</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <h6 class="text-success">{{ stats_data.requirements.completed }}</h6>
+                                    <small class="text-muted">Completed</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 需求优先级分布 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-bar"></i> 优先级分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 300px;">
+                            <canvas id="priorityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 需求类型分布 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-tags"></i> 需求类型分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 300px;">
+                            <canvas id="typeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 创建趋势 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-line-chart"></i> 需求创建趋势</h5>
+                        <small class="text-muted">最近30天</small>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 300px;">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详细统计表格 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-table"></i> 详细统计</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>按状态统计</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>状态</th>
+                                        <th>数量</th>
+                                        <th>占比</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>草稿</td>
+                                        <td>{{ stats_data.requirements.draft }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.draft / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>已提交</td>
+                                        <td>{{ stats_data.requirements.submitted }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.submitted / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>评审中</td>
+                                        <td>{{ stats_data.requirements.reviewing }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.reviewing / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>已批准</td>
+                                        <td>{{ stats_data.requirements.approved }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.approved / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>In progress</td>
+                                        <td>{{ stats_data.requirements.in_development }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.in_development / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>测试中</td>
+                                        <td>{{ stats_data.requirements.testing }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.testing / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td><strong>Completed</strong></td>
+                                        <td><strong>{{ stats_data.requirements.completed }}</strong></td>
+                                        <td><strong>{{ stats_data.requirements.completion_rate }}%</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-danger">已拒绝</td>
+                                        <td>{{ stats_data.requirements.rejected }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.rejected / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Cancelled</td>
+                                        <td>{{ stats_data.requirements.cancelled }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.cancelled / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-warning">On Hold</td>
+                                        <td>{{ stats_data.requirements.on_hold }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (stats_data.requirements.on_hold / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>按优先级统计</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>优先级</th>
+                                        <th>数量</th>
+                                        <th>占比</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for priority, count in stats_data.priority.items() %}
+                                    <tr>
+                                        <td>{{ priority }}</td>
+                                        <td>{{ count }}</td>
+                                        <td>
+                                            {% if stats_data.requirements.total > 0 %}
+                                            {{ (count / stats_data.requirements.total * 100)|round(1) }}%
+                                            {% else %}
+                                            0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js 本地文件 -->
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+
+<script>
+// 统计数据
+const statsData = {{ stats_data|tojson }};
+
+// 验证数据完整性
+if (!statsData || !statsData.requirements) {
+    console.error('统计数据未加载或不完整');
+    // 可以选择显示错误信息或默认数据
+}
+
+// 状态分布饼图
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Draft', 'Submitted', 'Under Review', 'Approved', 'In progress', 'Testing', 'Completed', 'Rejected', 'Cancelled', 'On Hold'],
+        datasets: [{
+            data: [
+                statsData.requirements?.draft || 0,
+                statsData.requirements?.submitted || 0,
+                statsData.requirements?.reviewing || 0,
+                statsData.requirements?.approved || 0,
+                statsData.requirements?.in_development || 0,
+                statsData.requirements?.testing || 0,
+                statsData.requirements?.completed || 0,
+                statsData.requirements?.rejected || 0,
+                statsData.requirements?.cancelled || 0,
+                statsData.requirements?.on_hold || 0
+            ],
+            backgroundColor: [
+                '#6c757d',  // 草稿 - 灰色
+                '#0d6efd',  // 已提交 - 蓝色
+                '#ffc107',  // 评审中 - 黄色
+                '#20c997',  // 已批准 - 青色
+                '#fd7e14',  // In progress - 橙色
+                '#6f42c1',  // 测试中 - 紫色
+                '#198754',  // Completed - 绿色
+                '#dc3545',  // 已拒绝 - 红色
+                '#495057',  // Cancelled - 深灰色
+                '#f8f9fa'   // On Hold - 浅灰色
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// 优先级分布柱图
+const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+const priorityLabels = statsData.priority ? Object.keys(statsData.priority) : [];
+const priorityData = statsData.priority ? Object.values(statsData.priority) : [];
+
+new Chart(priorityCtx, {
+    type: 'bar',
+    data: {
+        labels: priorityLabels,
+        datasets: [{
+            label: '需求数量',
+            data: priorityData,
+            backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#198754']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// 类型分布饼图
+const typeCtx = document.getElementById('typeChart').getContext('2d');
+const typeLabels = statsData.type ? Object.keys(statsData.type) : [];
+const typeData = statsData.type ? Object.values(statsData.type) : [];
+
+new Chart(typeCtx, {
+    type: 'pie',
+    data: {
+        labels: typeLabels,
+        datasets: [{
+            data: typeData,
+            backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// 趋势线图
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+const trendData = statsData.trend || [];
+
+new Chart(trendCtx, {
+    type: 'line',
+    data: {
+        labels: trendData.map(item => item.date),
+        datasets: [{
+            label: '创建数量',
+            data: trendData.map(item => item.count),
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// 刷新统计数据
+function refreshStats() {
+    window.location.reload();
+}
+
+// 导出统计报告
+function exportStats() {
+    alert('导出功能In progress...');
+}
+</script>
+{% endblock %}
